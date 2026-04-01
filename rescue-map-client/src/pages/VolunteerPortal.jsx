@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Users, Shield, MapPin, CheckCircle, ArrowRight, Heart, Award, Zap,
          LogIn, UserPlus, Navigation, Phone, Clock, AlertTriangle, X,
          ChevronRight, Loader, LogOut, Lock, Eye, EyeOff, User, Calendar } from 'lucide-react';
@@ -34,11 +34,11 @@ const fmtTime = (dt) =>
   new Date(dt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 // ════════════════════════════════════════════════════════════
-const VolunteerPortal = ({ socket }) => {
+const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
   // ── session ──
-  const [volunteer, setVolunteer] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('rescuemap_volunteer')); } catch { return null; }
-  });
+  // volunteer state is now managed by parent (App.jsx) via props
+  const isLoggingOut = useRef(false);
+
 
   // ── auth form ──
   const [authMode, setAuthMode]       = useState('login');   // 'login' | 'register'
@@ -86,8 +86,8 @@ const VolunteerPortal = ({ socket }) => {
   };
 
   const save = (vol) => {
-    setVolunteer(vol);
-    localStorage.setItem('rescuemap_volunteer', JSON.stringify(vol));
+    if (isLoggingOut.current) return;
+    onAuth(vol);
   };
 
   // ─── auth ────────────────────────────────────────────────
@@ -110,8 +110,9 @@ const VolunteerPortal = ({ socket }) => {
         save(data.volunteer);
         if (data.volunteer.activeTasks?.length) {
           setActiveRescue(data.volunteer.activeTasks.at(-1));
-          setView('tracking');
         }
+        // ALWAYS land on dashboard view ('alerts') as requested
+        setView('alerts');
       } else {
         if (!form.name || !form.phone || !form.password || !form.dob)
           return setAuthError('All fields marked * are required.');
@@ -146,14 +147,16 @@ const VolunteerPortal = ({ socket }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('rescuemap_volunteer');
-    setVolunteer(null);
+    isLoggingOut.current = true;
+    onLogout();
     setActiveRescue(null);
     setView('alerts');
     setNearbyAlerts([]);
     setAuthMode('login');
     setForm({ name: '', phone: '', password: '', dob: '', skills: [] });
     setAuthError('');
+    // Perform a hard refresh to clear any stuck browser state
+    window.location.reload();
   };
 
   // ─── en route ────────────────────────────────────────────
@@ -176,7 +179,7 @@ const VolunteerPortal = ({ socket }) => {
   const handleMarkResolved = async () => {
     if (!activeRescue?._id) return;
     try {
-      await axios.patch(`${API}/victims/${activeRescue._id}`, { status: 'Rescued' });
+      await axios.patch(`${API}/victims/${activeRescue._id}`, { status: 'Closed' });
       // Remove from volunteer's active tasks locally
       setActiveRescue(null);
       setView('alerts');
@@ -377,11 +380,6 @@ const VolunteerPortal = ({ socket }) => {
               <button onClick={() => setView('alerts')}
                 className="px-4 py-2 border border-gray-300 bg-white rounded-xl text-xs font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 transition shadow-sm"
               >← Alerts</button>
-              <button onClick={handleLogout} title="Logout"
-                className="flex items-center gap-2 px-4 py-2 border border-red-200 bg-red-50 rounded-xl text-xs font-black uppercase tracking-widest text-red-600 hover:bg-red-100 transition shadow-sm"
-              >
-                <LogOut className="w-3.5 h-3.5" /> Logout
-              </button>
             </div>
           </motion.div>
 
@@ -562,17 +560,9 @@ const VolunteerPortal = ({ socket }) => {
               ))}
             </div>
           </motion.div>
-
-          {/* Logout */}
-          <motion.button
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-red-200 text-red-600 font-black rounded-2xl text-xs uppercase tracking-widest hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-sm"
-          >
-            <LogOut className="w-4 h-4" /> Logout
-          </motion.button>
         </div>
+
+
 
         {/* ── Alerts ── */}
         <div className="lg:col-span-2 space-y-5">
@@ -583,14 +573,19 @@ const VolunteerPortal = ({ socket }) => {
               <h2 className="text-4xl font-display font-black tracking-tight uppercase text-gray-900">Priority Alerts</h2>
               <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Real-time distress notifications</p>
             </div>
-            <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 2, repeat: Infinity }}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-red-200 rounded-full shadow-sm self-start"
-            >
-              <motion.span animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 1.5, repeat: Infinity }}
-                className="w-2 h-2 bg-red-600 rounded-full"
-              />
-              <span className="text-[10px] text-red-600 font-black uppercase tracking-widest">Scanning</span>
-            </motion.div>
+            
+            <div className="flex items-center gap-3">
+              {/* Consolidated Dashboard Logout */}
+              <motion.button 
+                type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleLogout} 
+                className="px-6 py-2 border-2 border-red-200 bg-red-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+              >
+                Logout
+              </motion.button>
+            </div>
           </motion.div>
 
           <div className="grid md:grid-cols-2 gap-4">

@@ -24,8 +24,8 @@ const calculatePriority = (severity, people, timeSince) => {
   return severityScore + peopleScore + timeScore;
 };
 
-// POST Report Distress
-router.post('/report', async (req, res) => {
+// POST Create Victim Report (Distress)
+router.post('/victims', async (req, res) => {
   const { name, phone, location, severity, peopleCount, description, media } = req.body;
   
   try {

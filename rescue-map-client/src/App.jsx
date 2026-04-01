@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, Map as MapIcon, Users, BarChart3, Menu, X, PhoneCall, HelpCircle, Phone, LifeBuoy, Heart, Truck, Zap, Bell, Activity } from 'lucide-react';
+import { Shield, AlertTriangle, Map as MapIcon, Users, BarChart3, Menu, X, PhoneCall, HelpCircle, Phone, LifeBuoy, Heart, Truck, Zap, Bell, Activity, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import io from 'socket.io-client';
 
@@ -13,10 +13,31 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 const socket = io(API_BASE_URL);
 
 function App() {
-  const [activeTab, setActiveTab] = useState('landing');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('rescuemap_activeTab') || 'landing';
+  });
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('rescuemap_activeTab', tab);
+  };
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [alerts, setAlerts] = useState([]);
+  const [volunteer, setVolunteer] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('rescuemap_volunteer')); } catch { return null; }
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem('rescuemap_volunteer');
+    setVolunteer(null);
+  };
+
+  const handleAuth = (vol) => {
+    setVolunteer(vol);
+    localStorage.setItem('rescuemap_volunteer', JSON.stringify(vol));
+  };
 
   const EMERGENCY_NUMBERS = [
     { id: '112', label: 'All-In-One Emergency', number: '112', icon: Bell, color: 'bg-red-600', desc: 'National Emergency Number' },
@@ -68,12 +89,11 @@ function App() {
                 key={item.id}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all duration-200 ${
-                  activeTab === item.id 
-                    ? 'bg-red-100 text-red-600 border border-red-300 shadow-md' 
-                    : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent'
-                }`}
+                onClick={() => handleTabChange(item.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all duration-200 ${activeTab === item.id
+                  ? 'bg-red-100 text-red-600 border border-red-300 shadow-md'
+                  : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent'
+                  }`}
               >
                 <item.icon className="w-4 h-4" />
                 <span>{item.label}</span>
@@ -83,7 +103,7 @@ function App() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-3">
-            <motion.button 
+            <motion.button
               whileHover={{ scale: 1.05 }}
               onClick={() => setShowEmergencyModal(true)}
               className="hidden sm:flex items-center gap-2 px-4 py-2 border-2 border-red-600 text-red-600 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-md"
@@ -91,8 +111,8 @@ function App() {
               <PhoneCall className="w-3.5 h-3.5" />
               Emergency Line
             </motion.button>
-            
-            <motion.button 
+
+            <motion.button
               whileHover={{ rotate: 90 }}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="lg:hidden p-2 text-gray-600 hover:text-red-600 transition-colors"
@@ -118,14 +138,13 @@ function App() {
                   key={item.id}
                   whileHover={{ x: 5 }}
                   onClick={() => {
-                    setActiveTab(item.id);
+                    handleTabChange(item.id);
                     setIsMenuOpen(false);
                   }}
-                  className={`flex items-center gap-4 p-4 rounded-xl text-lg font-bold transition-all ${
-                    activeTab === item.id 
-                      ? 'bg-red-100 text-red-600 border border-red-300 shadow-md' 
-                      : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent'
-                  }`}
+                  className={`flex items-center gap-4 p-4 rounded-xl text-lg font-bold transition-all ${activeTab === item.id
+                    ? 'bg-red-100 text-red-600 border border-red-300 shadow-md'
+                    : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent'
+                    }`}
                 >
                   <item.icon className="w-6 h-6" />
                   <span className="uppercase tracking-wider">{item.label}</span>
@@ -141,12 +160,12 @@ function App() {
         <AnimatePresence mode="wait">
           {activeTab === 'landing' && (
             <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <LandingPage onStart={() => setActiveTab('report')} onDash={() => setActiveTab('dashboard')} />
+              <LandingPage onStart={(tab) => handleTabChange(tab || 'report')} onDash={() => handleTabChange('dashboard')} />
             </motion.div>
           )}
           {activeTab === 'report' && (
             <motion.div key="report" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-              <EmergencyReport onComplete={() => setActiveTab('landing')} />
+              <EmergencyReport />
             </motion.div>
           )}
           {activeTab === 'dashboard' && (
@@ -155,8 +174,14 @@ function App() {
             </motion.div>
           )}
           {activeTab === 'volunteer' && (
-            <motion.div key="volunteer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <VolunteerPortal socket={socket} />
+            <motion.div key="volunteer_tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <VolunteerPortal
+                key={volunteer?._id || 'guest'}
+                socket={socket}
+                volunteer={volunteer}
+                onAuth={handleAuth}
+                onLogout={handleLogout}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -174,14 +199,14 @@ function App() {
               transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
               className="card-base border-l-4 border-l-red-600 rounded-2xl shadow-2xl shadow-red-600/20 flex items-center gap-4 min-w-[340px] relative overflow-hidden group pointer-events-auto"
             >
-              <motion.div 
+              <motion.div
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
                 className="bg-gradient-to-br from-red-600 to-red-700 p-3 rounded-xl shadow-lg shadow-red-600/40 flex-shrink-0"
               >
                 <AlertTriangle className="w-5 h-5 text-white" />
               </motion.div>
-              
+
               <div className="flex-1 min-w-0">
                 <p className="font-display font-black text-xs uppercase tracking-widest text-red-600 mb-1">
                   Emergency Alert
@@ -190,8 +215,8 @@ function App() {
                   {alert.description || alert.message}
                 </p>
               </div>
-              
-              <motion.button 
+
+              <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setAlerts(prev => prev.filter((_, i) => i !== idx))}
@@ -200,7 +225,7 @@ function App() {
                 <X className="w-4 h-4" />
               </motion.button>
 
-              <motion.div 
+              <motion.div
                 animate={{ scaleX: [1, 0] }}
                 transition={{ duration: 5, ease: "linear" }}
                 onAnimationComplete={() => setAlerts(prev => prev.filter((_, i) => i !== idx))}
@@ -213,14 +238,14 @@ function App() {
       {/* Emergency Modal */}
       <AnimatePresence>
         {showEmergencyModal && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
             onClick={() => setShowEmergencyModal(false)}
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
@@ -229,7 +254,7 @@ function App() {
             >
               {/* Close Header */}
               <div className="absolute top-6 right-6 z-10">
-                <button 
+                <button
                   onClick={() => setShowEmergencyModal(false)}
                   className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
                 >

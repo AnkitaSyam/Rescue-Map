@@ -17,8 +17,8 @@ const CoordinatorDashboard = ({ socket }) => {
     
     if (socket) {
       // New report added
-      socket.on('emergency-broadcast', (newReport) => {
-        setVictims(prev => [newReport, ...prev]);
+      socket.on('new-emergency', (newVictim) => {
+        setVictims(prev => [newVictim, ...prev]);
       });
 
       // Victim status updated (e.g. Rescued by volunteer)
@@ -365,22 +365,23 @@ const CoordinatorDashboard = ({ socket }) => {
 
                 <div>
                   <h4 className="text-[10px] font-black text-gray-600 uppercase tracking-[0.2em] mb-4">Command Actions</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['Pending', 'Dispatched', 'Rescued', 'Closed'].map(status => (
-                      <button 
-                        key={status}
-                        onClick={() => updateStatus(selectedVictim._id, status)}
-                        className={`py-4 px-4 rounded-xl text-[10px] font-black tracking-widest uppercase border transition-all flex flex-col items-center gap-1 ${
-                          selectedVictim.status === status 
-                          ? 'bg-red-600 border-red-500 text-white shadow-xl shadow-red-600/30' 
-                          : 'bg-gray-200 border-gray-300 text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
-                        {status}
-                        {selectedVictim.status === status && <CheckCircle2 className="w-3 h-3" />}
-                      </button>
-                    ))}
-                  </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['Pending', 'Dispatched', 'Rescued', 'Closed'].map(status => (
+                        <button 
+                          key={status}
+                          disabled={selectedVictim.status === 'Closed' && status !== 'Closed'}
+                          onClick={() => updateStatus(selectedVictim._id, status)}
+                          className={`py-4 px-4 rounded-xl text-[10px] font-black tracking-widest uppercase border transition-all flex flex-col items-center gap-1 ${
+                            selectedVictim.status === status 
+                            ? 'bg-red-600 border-red-500 text-white shadow-xl shadow-red-600/30' 
+                            : 'bg-gray-200 border-gray-300 text-gray-700 hover:border-gray-400'
+                          } ${selectedVictim.status === 'Closed' && status !== 'Closed' ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+                        >
+                          {status}
+                          {selectedVictim.status === status && <CheckCircle2 className="w-3 h-3" />}
+                        </button>
+                      ))}
+                    </div>
                 </div>
 
                 <div className="pt-4">
