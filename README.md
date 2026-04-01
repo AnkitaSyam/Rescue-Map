@@ -1,4 +1,4 @@
-# RescueMap 🚀
+# Rescue Map 
 
 **Team Name: F1**  
 **Team Members:**  
