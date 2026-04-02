@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Users, Navigation, Send, CheckCircle2, Camera, Mic, MapPin } from 'lucide-react';
+import { AlertCircle, Users, Send, CheckCircle2, Camera, Mic, MapPin, Loader, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const EmergencyReport = ({ onComplete }) => {
   const [step, setStep] = useState(1);
@@ -35,7 +37,7 @@ const EmergencyReport = ({ onComplete }) => {
     try {
       const finalLocation = location || { lat: 40.7128 + Math.random()*0.1, lng: -74.006 + Math.random()*0.1 };
       
-      await axios.post('/api/report', {
+      await axios.post(`${API_BASE_URL}/api/victims`, {
         name: name || 'Anonymous Victim',
         phone: phone || 'N/A',
         severity,
@@ -225,9 +227,10 @@ const EmergencyReport = ({ onComplete }) => {
                 <h3 className="text-label-rose">Contact Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-label text-gray-600">Full Name</label>
+                    <label className="text-label text-gray-600">Full Name <span className="text-red-600">*</span></label>
                     <input 
                       type="text" 
+                      required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Your name"
@@ -235,9 +238,10 @@ const EmergencyReport = ({ onComplete }) => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-label text-gray-600">Phone Number</label>
+                    <label className="text-label text-gray-600">Phone Number <span className="text-red-600">*</span></label>
                     <input 
                       type="tel" 
+                      required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="Your phone"
@@ -251,7 +255,7 @@ const EmergencyReport = ({ onComplete }) => {
               <div className="card-base rounded-2xl p-8 space-y-4">
                 <label className="text-label-rose flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
-                  Situation Details
+                  Situation Details <span className="text-red-600 font-bold ml-1">*</span>
                 </label>
                 <textarea
                   value={description}
@@ -308,12 +312,19 @@ const EmergencyReport = ({ onComplete }) => {
                   disabled={loading}
                   className="flex-1 py-5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 disabled:from-gray-400 disabled:to-gray-400 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-glow-red-lg uppercase tracking-widest text-lg relative overflow-hidden group"
                 >
-                  <motion.span
-                    animate={{ opacity: loading ? 1 : 0, scale: loading ? 1 : 0.8 }}
-                    className="inline-block"
-                  >
-                    {loading ? 'Transmitting...' : 'Send SOS Signal'}
-                  </motion.span>
+                  <span className="relative z-10 flex items-center justify-center gap-3">
+                    {loading ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Transmitting...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-5 h-5 fill-white" />
+                        Submit
+                      </>
+                    )}
+                  </span>
                 </motion.button>
               </div>
             </motion.div>

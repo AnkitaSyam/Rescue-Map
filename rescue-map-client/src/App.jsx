@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, AlertTriangle, Map as MapIcon, Users, BarChart3, Menu, X, PhoneCall, HelpCircle } from 'lucide-react';
+import { Shield, AlertTriangle, Map as MapIcon, Users, BarChart3, Menu, X, PhoneCall, HelpCircle, Phone, LifeBuoy, Heart, Truck, Zap, Bell, Activity, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import io from 'socket.io-client';
 
@@ -9,12 +9,48 @@ import EmergencyReport from './pages/EmergencyReport';
 import CoordinatorDashboard from './pages/CoordinatorDashboard';
 import VolunteerPortal from './pages/VolunteerPortal';
 
-const socket = io('http://localhost:5000');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const socket = io(API_BASE_URL);
 
 function App() {
-  const [activeTab, setActiveTab] = useState('landing');
+  const [activeTab, setActiveTab] = useState(() => {
+    const stored = localStorage.getItem('rescuemap_activeTab');
+    const validTabs = ['landing', 'report', 'dashboard', 'volunteer'];
+    return validTabs.includes(stored) ? stored : 'landing';
+  });
+
+  const handleTabChange = (tab) => {
+    const validTabs = ['landing', 'report', 'dashboard', 'volunteer'];
+    const finalTab = validTabs.includes(tab) ? tab : 'landing';
+    setActiveTab(finalTab);
+    localStorage.setItem('rescuemap_activeTab', finalTab);
+  };
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [alerts, setAlerts] = useState([]);
+  const [volunteer, setVolunteer] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('rescuemap_volunteer')); } catch { return null; }
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem('rescuemap_volunteer');
+    setVolunteer(null);
+  };
+
+  const handleAuth = (vol) => {
+    setVolunteer(vol);
+    localStorage.setItem('rescuemap_volunteer', JSON.stringify(vol));
+  };
+
+  const EMERGENCY_NUMBERS = [
+    { id: '112', label: 'All-In-One Emergency', number: '112', icon: Bell, color: 'bg-red-600', desc: 'National Emergency Number' },
+    { id: 'police', label: 'Police', number: '100', icon: Shield, color: 'bg-blue-600', desc: 'Direct Police Help' },
+    { id: 'fire', label: 'Fire Brigade', number: '101', icon: Zap, color: 'bg-orange-600', desc: 'Fire & Rescue Services' },
+    { id: 'ambulance', label: 'Ambulance', number: '102', icon: Activity, color: 'bg-emerald-600', desc: 'Medical Emergency' },
+    { id: 'disaster', label: 'Disaster Management', number: '108', icon: LifeBuoy, color: 'bg-purple-600', desc: 'NDRF / Disaster Relief' },
+    { id: 'women', label: 'Women Helpline', number: '1091', icon: Heart, color: 'bg-pink-600', desc: 'Safety & Protection' },
+  ];
 
   useEffect(() => {
     socket.on('emergency-broadcast', (alert) => {
@@ -57,12 +93,11 @@ function App() {
                 key={item.id}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all duration-200 ${
-                  activeTab === item.id 
-                    ? 'bg-red-100 text-red-600 border border-red-300 shadow-md' 
-                    : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent'
-                }`}
+                onClick={() => handleTabChange(item.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-widest transition-all duration-200 ${activeTab === item.id
+                  ? 'bg-red-100 text-red-600 border border-red-300 shadow-md'
+                  : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent'
+                  }`}
               >
                 <item.icon className="w-4 h-4" />
                 <span>{item.label}</span>
@@ -72,15 +107,16 @@ function App() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-3">
-            <motion.button 
+            <motion.button
               whileHover={{ scale: 1.05 }}
+              onClick={() => setShowEmergencyModal(true)}
               className="hidden sm:flex items-center gap-2 px-4 py-2 border-2 border-red-600 text-red-600 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all shadow-md"
             >
               <PhoneCall className="w-3.5 h-3.5" />
               Emergency Line
             </motion.button>
-            
-            <motion.button 
+
+            <motion.button
               whileHover={{ rotate: 90 }}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="lg:hidden p-2 text-gray-600 hover:text-red-600 transition-colors"
@@ -106,14 +142,13 @@ function App() {
                   key={item.id}
                   whileHover={{ x: 5 }}
                   onClick={() => {
-                    setActiveTab(item.id);
+                    handleTabChange(item.id);
                     setIsMenuOpen(false);
                   }}
-                  className={`flex items-center gap-4 p-4 rounded-xl text-lg font-bold transition-all ${
-                    activeTab === item.id 
-                      ? 'bg-red-100 text-red-600 border border-red-300 shadow-md' 
-                      : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent'
-                  }`}
+                  className={`flex items-center gap-4 p-4 rounded-xl text-lg font-bold transition-all ${activeTab === item.id
+                    ? 'bg-red-100 text-red-600 border border-red-300 shadow-md'
+                    : 'text-gray-600 hover:text-red-600 hover:bg-red-50 border border-transparent'
+                    }`}
                 >
                   <item.icon className="w-6 h-6" />
                   <span className="uppercase tracking-wider">{item.label}</span>
@@ -129,22 +164,28 @@ function App() {
         <AnimatePresence mode="wait">
           {activeTab === 'landing' && (
             <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <LandingPage onStart={() => setActiveTab('report')} onDash={() => setActiveTab('dashboard')} />
+              <LandingPage onStart={() => handleTabChange('report')} onDash={() => handleTabChange('dashboard')} />
             </motion.div>
           )}
           {activeTab === 'report' && (
             <motion.div key="report" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-              <EmergencyReport onComplete={() => setActiveTab('landing')} />
+              <EmergencyReport />
             </motion.div>
           )}
           {activeTab === 'dashboard' && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <CoordinatorDashboard />
+              <CoordinatorDashboard socket={socket} />
             </motion.div>
           )}
           {activeTab === 'volunteer' && (
-            <motion.div key="volunteer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <VolunteerPortal />
+            <motion.div key="volunteer_tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+              <VolunteerPortal
+                key={volunteer?._id || 'guest'}
+                socket={socket}
+                volunteer={volunteer}
+                onAuth={handleAuth}
+                onLogout={handleLogout}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -162,14 +203,14 @@ function App() {
               transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
               className="card-base border-l-4 border-l-red-600 rounded-2xl shadow-2xl shadow-red-600/20 flex items-center gap-4 min-w-[340px] relative overflow-hidden group pointer-events-auto"
             >
-              <motion.div 
+              <motion.div
                 animate={{ scale: [1, 1.1, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
                 className="bg-gradient-to-br from-red-600 to-red-700 p-3 rounded-xl shadow-lg shadow-red-600/40 flex-shrink-0"
               >
                 <AlertTriangle className="w-5 h-5 text-white" />
               </motion.div>
-              
+
               <div className="flex-1 min-w-0">
                 <p className="font-display font-black text-xs uppercase tracking-widest text-red-600 mb-1">
                   Emergency Alert
@@ -178,8 +219,8 @@ function App() {
                   {alert.description || alert.message}
                 </p>
               </div>
-              
-              <motion.button 
+
+              <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setAlerts(prev => prev.filter((_, i) => i !== idx))}
@@ -188,7 +229,7 @@ function App() {
                 <X className="w-4 h-4" />
               </motion.button>
 
-              <motion.div 
+              <motion.div
                 animate={{ scaleX: [1, 0] }}
                 transition={{ duration: 5, ease: "linear" }}
                 onAnimationComplete={() => setAlerts(prev => prev.filter((_, i) => i !== idx))}
@@ -198,6 +239,75 @@ function App() {
           ))}
         </AnimatePresence>
       </div>
+      {/* Emergency Modal */}
+      <AnimatePresence>
+        {showEmergencyModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+            onClick={() => setShowEmergencyModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl relative"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Close Header */}
+              <div className="absolute top-6 right-6 z-10">
+                <button
+                  onClick={() => setShowEmergencyModal(false)}
+                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-8 md:p-12">
+                <div className="mb-8">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <PhoneCall className="w-5 h-5 text-red-600" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Quick Assistance</span>
+                  </div>
+                  <h2 className="text-4xl font-display font-black text-gray-900 uppercase italic tracking-tighter">Emergency Lines</h2>
+                  <p className="text-gray-500 text-sm mt-1 font-medium">Standard verified helpline numbers in India for immediate rescue.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {EMERGENCY_NUMBERS.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      whileHover={{ y: -5 }}
+                      className="group flex items-center gap-4 p-5 bg-gray-50 border border-gray-100 rounded-2xl transition-all shadow-sm relative overflow-hidden"
+                    >
+                      <div className={`p-4 rounded-xl text-white shadow-lg ${item.color} group-hover:scale-110 transition-transform`}>
+                        <item.icon className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <span className="text-xs font-black uppercase tracking-widest text-gray-400">{item.label}</span>
+                          <span className="text-2xl font-display font-black text-gray-900">{item.number}</span>
+                        </div>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight mt-0.5">{item.desc}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="mt-10 p-6 bg-red-50 border border-red-100 rounded-3xl text-center">
+                  <p className="text-xs font-bold text-red-600 uppercase tracking-widest mb-1 italic">Notice</p>
+                  <p className="text-[10px] text-red-800 font-medium">These numbers are for **Emergency use only**. Abuse of emergency services is a punishable offense. Stay safe.</p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
