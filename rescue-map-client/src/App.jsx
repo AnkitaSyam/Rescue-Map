@@ -50,15 +50,12 @@ function App() {
   const [activeTab, setActiveTab] = useState(() => {
     const saved = localStorage.getItem('rescuemap_activeTab');
     const validTabs = ['landing', 'report', 'dashboard', 'volunteer'];
-    if (saved && saved !== '[object Object]' && validTabs.includes(saved)) {
-      return saved;
-    }
-    return 'landing';
+    return (saved && validTabs.includes(saved)) ? saved : 'landing';
   });
 
   const handleTabChange = (tab) => {
     const validTabs = ['landing', 'report', 'dashboard', 'volunteer'];
-    const cleanTab = (typeof tab === 'string' && validTabs.includes(tab)) ? tab : 'landing';
+    const cleanTab = validTabs.includes(tab) ? tab : 'landing';
     setActiveTab(cleanTab);
     localStorage.setItem('rescuemap_activeTab', cleanTab);
   };
