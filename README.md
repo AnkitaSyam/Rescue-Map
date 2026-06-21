@@ -28,8 +28,6 @@ Google Gemini is integrated as a **Smart Triage Engine**. When a victim submits 
 ## Proof of Google AI Usage
 All AI logic is located in: `rescue-map-server/services/aiService.js`
 
-![Google AI](./proof/AI_Tool.png)
-
 ## Screenshots
 
 ![Landing Page](./proof/Landing_Page.jpeg)
