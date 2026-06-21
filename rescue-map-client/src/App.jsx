@@ -12,14 +12,55 @@ import VolunteerPortal from './pages/VolunteerPortal';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const socket = io(API_BASE_URL);
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-2xl mx-auto my-12 p-8 bg-red-50 border-2 border-red-300 rounded-3xl text-red-800 shadow-xl">
+          <h2 className="text-2xl font-display font-black uppercase tracking-wider mb-4 flex items-center gap-2">
+            <span className="p-2 bg-red-200 rounded-lg">⚠️</span> Component Rendering Error
+          </h2>
+          <p className="font-semibold text-sm mb-4">An error occurred while loading this page:</p>
+          <pre className="p-4 bg-red-900 text-red-100 rounded-2xl overflow-x-auto text-xs font-mono max-h-60 whitespace-pre-wrap">
+            {this.state.error?.stack || this.state.error?.toString()}
+          </pre>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-6 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl transition-all shadow-md uppercase tracking-wider text-xs"
+          >
+            Reload Application
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('rescuemap_activeTab') || 'landing';
+    const saved = localStorage.getItem('rescuemap_activeTab');
+    const validTabs = ['landing', 'report', 'dashboard', 'volunteer'];
+    if (saved && saved !== '[object Object]' && validTabs.includes(saved)) {
+      return saved;
+    }
+    return 'landing';
   });
 
   const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    localStorage.setItem('rescuemap_activeTab', tab);
+    const validTabs = ['landing', 'report', 'dashboard', 'volunteer'];
+    const cleanTab = (typeof tab === 'string' && validTabs.includes(tab)) ? tab : 'landing';
+    setActiveTab(cleanTab);
+    localStorage.setItem('rescuemap_activeTab', cleanTab);
   };
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -157,34 +198,32 @@ function App() {
 
       {/* Main Content */}
       <main className="pt-20 pb-12 px-4">
-        <AnimatePresence mode="wait">
-          {activeTab === 'landing' && (
-            <motion.div key="landing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <LandingPage onStart={(tab) => handleTabChange(tab || 'report')} onDash={() => handleTabChange('dashboard')} />
-            </motion.div>
-          )}
-          {activeTab === 'report' && (
-            <motion.div key="report" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-              <EmergencyReport />
-            </motion.div>
-          )}
-          {activeTab === 'dashboard' && (
-            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <CoordinatorDashboard socket={socket} />
-            </motion.div>
-          )}
-          {activeTab === 'volunteer' && (
-            <motion.div key="volunteer_tab" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-              <VolunteerPortal
-                key={volunteer?._id || 'guest'}
-                socket={socket}
-                volunteer={volunteer}
-                onAuth={handleAuth}
-                onLogout={handleLogout}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {activeTab === 'landing' && (
+          <ErrorBoundary>
+            <LandingPage onStart={() => handleTabChange('report')} onDash={() => handleTabChange('dashboard')} />
+          </ErrorBoundary>
+        )}
+        {activeTab === 'report' && (
+          <ErrorBoundary>
+            <EmergencyReport onComplete={() => handleTabChange('landing')} />
+          </ErrorBoundary>
+        )}
+        {activeTab === 'dashboard' && (
+          <ErrorBoundary>
+            <CoordinatorDashboard socket={socket} />
+          </ErrorBoundary>
+        )}
+        {activeTab === 'volunteer' && (
+          <ErrorBoundary>
+            <VolunteerPortal
+              key={volunteer?._id || 'guest'}
+              socket={socket}
+              volunteer={volunteer}
+              onAuth={handleAuth}
+              onLogout={handleLogout}
+            />
+          </ErrorBoundary>
+        )}
       </main>
 
       {/* Global Alerts Toasts */}

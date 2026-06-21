@@ -79,8 +79,8 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
       const { data } = await axios.get(`${API}/volunteers/${volunteer._id}`);
       if (data.success) {
         save(data.volunteer);
-        if (data.volunteer.activeTasks?.length)
-          setActiveRescue(data.volunteer.activeTasks.at(-1));
+        const active = data.volunteer.activeTasks?.find(t => t.status !== 'Closed' && t.status !== 'Rescued');
+        setActiveRescue(active || null);
       }
     } catch {}
   };
@@ -108,9 +108,8 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
         const { data } = await axios.post(`${API}/volunteers/login`, { phone: form.phone, password: form.password });
         if (!data.success) return setAuthError(data.error);
         save(data.volunteer);
-        if (data.volunteer.activeTasks?.length) {
-          setActiveRescue(data.volunteer.activeTasks.at(-1));
-        }
+        const active = data.volunteer.activeTasks?.find(t => t.status !== 'Closed' && t.status !== 'Rescued');
+        setActiveRescue(active || null);
         // ALWAYS land on dashboard view ('alerts') as requested
         setView('alerts');
       } else {

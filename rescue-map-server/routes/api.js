@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Victim = require('../models/Victim');
-const Volunteer = require('../models/Volunteer');
+const { db } = require('../config/firebase');
 const { analyzeDistress } = require('../services/aiService');
 
 // Calculate Priority Score Utility
@@ -37,23 +36,33 @@ router.post('/victims', async (req, res) => {
     if (aiResult) {
       priorityScore = Math.max(priorityScore, aiResult.priorityScore);
       aiReasoning = aiResult.reasoning;
-      // We can also override severity if AI finds it more critical
       console.log(`AI Triage: Priority ${aiResult.priorityScore}, Severity: ${aiResult.verifiedSeverity}`);
     }
     
-    const newVictim = new Victim({
-      name, phone, location, severity, peopleCount, description, media, 
+    const victimData = {
+      name: name || 'Anonymous',
+      phone,
+      location,
+      severity: severity || 'Safe',
+      peopleCount: peopleCount || 1,
+      description,
+      media: media || [],
+      status: 'Pending',
       priorityScore: Number(priorityScore),
-      aiReasoning // Optional: update model if you want to store it
-    });
+      aiReasoning,
+      assignedTeam: null,
+      assignedVolunteer: null,
+      createdAt: new Date().toISOString()
+    };
     
-    await newVictim.save();
+    const docRef = await db.collection('victims').add(victimData);
+    const savedVictim = { _id: docRef.id, ...victimData };
     
     // Emit real-time update to all coordinators via socket.io
     const io = req.app.get('socketio');
-    io.emit('new-emergency', newVictim);
+    io.emit('new-emergency', savedVictim);
     
-    res.status(201).json({ success: true, victim: newVictim });
+    res.status(201).json({ success: true, victim: savedVictim });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -62,9 +71,29 @@ router.post('/victims', async (req, res) => {
 // GET All Active Victims (exclude Rescued and Closed)
 router.get('/victims', async (req, res) => {
   try {
-    const victims = await Victim.find({ status: { $nin: ['Closed', 'Rescued'] } })
-      .sort({ priorityScore: -1 })
-      .populate('assignedVolunteer'); // Added populate
+    const snapshot = await db.collection('victims')
+      .where('status', 'not-in', ['Closed', 'Rescued'])
+      .get();
+    
+    let victims = snapshot.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
+    
+    // Populate assignedVolunteer manually
+    for (let victim of victims) {
+      if (victim.assignedVolunteer) {
+        const volDoc = await db.collection('volunteers').doc(victim.assignedVolunteer).get();
+        if (volDoc.exists) {
+          const volData = volDoc.data();
+          delete volData.password;
+          victim.assignedVolunteer = { _id: volDoc.id, ...volData };
+        } else {
+          victim.assignedVolunteer = null;
+        }
+      }
+    }
+    
+    // Sort by priorityScore desc in memory to avoid index requirements
+    victims.sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+    
     res.json(victims);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -76,7 +105,31 @@ router.patch('/victims/:id', async (req, res) => {
   const { status, assignedTeam } = req.body;
   
   try {
-    const victim = await Victim.findByIdAndUpdate(req.params.id, { status, assignedTeam }, { new: true });
+    const docRef = db.collection('victims').doc(req.params.id);
+    const updateData = {};
+    if (status !== undefined) updateData.status = status;
+    if (assignedTeam !== undefined) updateData.assignedTeam = assignedTeam;
+    
+    await docRef.update(updateData);
+    const updatedDoc = await docRef.get();
+    
+    if (!updatedDoc.exists) {
+      return res.status(404).json({ success: false, error: 'Victim not found' });
+    }
+    
+    const victim = { _id: updatedDoc.id, ...updatedDoc.data() };
+    
+    // Populate assignedVolunteer
+    if (victim.assignedVolunteer) {
+      const volDoc = await db.collection('volunteers').doc(victim.assignedVolunteer).get();
+      if (volDoc.exists) {
+        const volData = volDoc.data();
+        delete volData.password;
+        victim.assignedVolunteer = { _id: volDoc.id, ...volData };
+      } else {
+        victim.assignedVolunteer = null;
+      }
+    }
     
     const io = req.app.get('socketio');
     io.emit('status-update', victim);
@@ -119,19 +172,38 @@ router.post('/volunteers/register', async (req, res) => {
       return res.status(400).json({ success: false, error: 'You must be 18 or older to register as a volunteer.' });
     }
 
-    const existing = await Volunteer.findOne({ phone });
-    if (existing) return res.status(400).json({ success: false, error: 'Phone already registered. Please login.' });
+    const snapshot = await db.collection('volunteers').where('phone', '==', phone).limit(1).get();
+    if (!snapshot.empty) {
+      return res.status(400).json({ success: false, error: 'Phone already registered. Please login.' });
+    }
 
-    const volunteer = new Volunteer({
-      name, phone, password, dob: dobDate,
+    const volunteerData = {
+      name,
+      phone,
+      password,
+      dob: dobDate.toISOString(),
       skills: skills || [],
-      location: location || { lat: 0, lng: 0 }
-    });
-    await volunteer.save();
-    // Return without password, with calculated age
-    const safe = volunteer.toObject();
-    delete safe.password;
-    safe.age = age;
+      location: location || { lat: 0, lng: 0 },
+      available: true,
+      activeTasks: [],
+      createdAt: new Date().toISOString()
+    };
+    
+    const docRef = await db.collection('volunteers').add(volunteerData);
+    
+    const safe = {
+      _id: docRef.id,
+      name,
+      phone,
+      dob: volunteerData.dob,
+      skills: volunteerData.skills,
+      location: volunteerData.location,
+      available: volunteerData.available,
+      activeTasks: volunteerData.activeTasks,
+      createdAt: volunteerData.createdAt,
+      age
+    };
+    
     res.status(201).json({ success: true, volunteer: safe });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -143,11 +215,34 @@ router.post('/volunteers/login', async (req, res) => {
   const { phone, password } = req.body;
   try {
     if (!phone || !password) return res.status(400).json({ success: false, error: 'Phone and password are required.' });
-    const volunteer = await Volunteer.findOne({ phone }).populate('activeTasks');
-    if (!volunteer) return res.status(404).json({ success: false, error: 'No account found with this phone number.' });
-    if (volunteer.password !== password) return res.status(401).json({ success: false, error: 'Incorrect password.' });
-    const safe = volunteer.toObject();
+    
+    const snapshot = await db.collection('volunteers').where('phone', '==', phone).limit(1).get();
+    if (snapshot.empty) {
+      return res.status(404).json({ success: false, error: 'No account found with this phone number.' });
+    }
+    
+    const doc = snapshot.docs[0];
+    const volunteer = { _id: doc.id, ...doc.data() };
+    
+    if (volunteer.password !== password) {
+      return res.status(401).json({ success: false, error: 'Incorrect password.' });
+    }
+    
+    // Populate activeTasks
+    const populatedTasks = [];
+    if (volunteer.activeTasks && volunteer.activeTasks.length > 0) {
+      for (const taskId of volunteer.activeTasks) {
+        const taskDoc = await db.collection('victims').doc(taskId).get();
+        if (taskDoc.exists) {
+          populatedTasks.push({ _id: taskDoc.id, ...taskDoc.data() });
+        }
+      }
+    }
+    volunteer.activeTasks = populatedTasks;
+    
+    const safe = { ...volunteer };
     delete safe.password;
+    
     res.json({ success: true, volunteer: safe });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -157,20 +252,34 @@ router.post('/volunteers/login', async (req, res) => {
 // POST Assign victim to volunteer (En Route)
 router.post('/volunteers/:id/assign/:victimId', async (req, res) => {
   try {
-    const volunteer = await Volunteer.findById(req.params.id);
-    if (!volunteer) return res.status(404).json({ success: false, error: 'Volunteer not found' });
+    const volRef = db.collection('volunteers').doc(req.params.id);
+    const volDoc = await volRef.get();
+    if (!volDoc.exists) return res.status(404).json({ success: false, error: 'Volunteer not found' });
     
-    if (!volunteer.activeTasks.includes(req.params.victimId)) {
-      volunteer.activeTasks.push(req.params.victimId);
-      await volunteer.save();
+    const volunteerData = volDoc.data();
+    let activeTasks = volunteerData.activeTasks || [];
+    if (!activeTasks.includes(req.params.victimId)) {
+      activeTasks.push(req.params.victimId);
+      await volRef.update({ activeTasks });
     }
 
-    // Update victim status and link the volunteer
-    const victim = await Victim.findByIdAndUpdate(
-      req.params.victimId,
-      { status: 'Dispatched', assignedVolunteer: req.params.id }, // Added volunteer ID
-      { new: true }
-    ).populate('assignedVolunteer'); // Populate before emitting
+    const victimRef = db.collection('victims').doc(req.params.victimId);
+    await victimRef.update({
+      status: 'Dispatched',
+      assignedVolunteer: req.params.id
+    });
+    
+    const updatedVictimDoc = await victimRef.get();
+    const victim = { _id: updatedVictimDoc.id, ...updatedVictimDoc.data() };
+    
+    // Populate assignedVolunteer
+    const volDocPopulated = await volRef.get();
+    const volData = volDocPopulated.data();
+    delete volData.password;
+    victim.assignedVolunteer = { _id: volDocPopulated.id, ...volData };
+    
+    // Prepare safe volunteer data
+    const volunteer = { _id: volDocPopulated.id, ...volData, activeTasks };
 
     const io = req.app.get('socketio');
     io.emit('status-update', victim);
@@ -184,8 +293,24 @@ router.post('/volunteers/:id/assign/:victimId', async (req, res) => {
 // GET Volunteer with active tasks populated
 router.get('/volunteers/:id', async (req, res) => {
   try {
-    const volunteer = await Volunteer.findById(req.params.id).populate('activeTasks');
-    if (!volunteer) return res.status(404).json({ success: false, error: 'Volunteer not found' });
+    const volDoc = await db.collection('volunteers').doc(req.params.id).get();
+    if (!volDoc.exists) return res.status(404).json({ success: false, error: 'Volunteer not found' });
+    
+    const volunteer = { _id: volDoc.id, ...volDoc.data() };
+    delete volunteer.password;
+    
+    // Populate activeTasks
+    const populatedTasks = [];
+    if (volunteer.activeTasks && volunteer.activeTasks.length > 0) {
+      for (const taskId of volunteer.activeTasks) {
+        const taskDoc = await db.collection('victims').doc(taskId).get();
+        if (taskDoc.exists) {
+          populatedTasks.push({ _id: taskDoc.id, ...taskDoc.data() });
+        }
+      }
+    }
+    volunteer.activeTasks = populatedTasks;
+    
     res.json({ success: true, volunteer });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

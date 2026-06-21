@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RescueMap | Disaster Response Coordination</title>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <script>
+      window.addEventListener('error', function(event) {
+        var errDiv = document.createElement('div');
+        errDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:20px;z-index:99999;font-family:monospace;white-space:pre-wrap;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,0.5);';
+        errDiv.innerText = 'Global Error Caught:\n' + (event.error ? event.error.stack : event.message);
+        document.body.appendChild(errDiv);
+      });
+      window.addEventListener('unhandledrejection', function(event) {
+        var errDiv = document.createElement('div');
+        errDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:darkred;color:white;padding:20px;z-index:99999;font-family:monospace;white-space:pre-wrap;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,0.5);';
+        errDiv.innerText = 'Unhandled Promise Rejection:\n' + (event.reason ? (event.reason.stack || event.reason) : event.promise);
+        document.body.appendChild(errDiv);
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

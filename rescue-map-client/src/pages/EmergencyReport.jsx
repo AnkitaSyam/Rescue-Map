@@ -111,18 +111,10 @@ const EmergencyReport = ({ onComplete }) => {
     <div className="min-h-screen py-12 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-6 mb-12"
-        >
-          <motion.div 
-            animate={{ rotate: [0, -5, 5, 0] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-700 rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/50 flex-shrink-0"
-          >
+        <div className="flex items-center gap-6 mb-12">
+          <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-700 rounded-2xl flex items-center justify-center shadow-lg shadow-red-600/50 flex-shrink-0">
             <AlertCircle className="w-8 h-8 text-white" />
-          </motion.div>
+          </div>
           <div>
             <h1 className="text-4xl md:text-5xl font-display font-black tracking-tight uppercase text-gray-900">
               Distress Report
@@ -131,28 +123,19 @@ const EmergencyReport = ({ onComplete }) => {
               Step {step} of 2 • Priority Classification
             </p>
           </div>
-        </motion.div>
+        </div>
 
-        <AnimatePresence mode="wait">
+        <div>
           {step === 1 ? (
-            <motion.div 
-              key="step1" 
-              initial={{ opacity: 0, x: 20 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-10"
-            >
+            <div className="space-y-10">
               <div className="space-y-6">
                 <h2 className="text-2xl font-display font-black uppercase tracking-wide text-gray-900">
                   Classify Your Emergency Level
                 </h2>
                 <div className="grid grid-cols-1 gap-3">
                   {severityLevels.map((lvl) => (
-                    <motion.button
+                    <button
                       key={lvl.id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
                       onClick={() => setSeverity(lvl.id)}
                       className={`p-6 rounded-2xl border-2 text-left flex items-center justify-between transition-all duration-300 group ${
                         severity === lvl.id 
@@ -172,29 +155,20 @@ const EmergencyReport = ({ onComplete }) => {
                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${severity === lvl.id ? `${lvl.border} ${lvl.bg}` : 'border-gray-300'}`}>
                         {severity === lvl.id && <div className={`w-3 h-3 rounded-full ${lvl.color}`} />}
                       </div>
-                    </motion.button>
+                    </button>
                   ))}
                 </div>
               </div>
 
-              <motion.button 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <button 
                 onClick={() => setStep(2)}
                 className="w-full py-5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-glow-red-lg uppercase tracking-widest text-lg"
               >
                 Continue to Details
-              </motion.button>
-            </motion.div>
+              </button>
+            </div>
           ) : (
-            <motion.div 
-              key="step2" 
-              initial={{ opacity: 0, x: 20 }} 
-              animate={{ opacity: 1, x: 0 }} 
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.4 }}
-              className="space-y-8"
-            >
+            <div className="space-y-8">
               {/* People Count */}
               <div className="card-base rounded-2xl p-8 space-y-6">
                 <div className="flex items-center justify-between">
@@ -266,25 +240,13 @@ const EmergencyReport = ({ onComplete }) => {
               </div>
 
               {/* GPS Status */}
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="card-base rounded-2xl p-6 flex items-center gap-4 border border-emerald-300 bg-emerald-50"
-              >
-                <motion.div 
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="flex-shrink-0"
-                >
+              <div className="card-base rounded-2xl p-6 flex items-center gap-4 border border-emerald-300 bg-emerald-50">
+                <div className="flex-shrink-0">
                   <div className="relative">
-                    <motion.div
-                      animate={{ opacity: [1, 0.5, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="absolute inset-0 bg-emerald-500/30 blur-lg rounded-full"
-                    />
+                    <div className="absolute inset-0 bg-emerald-500/30 blur-lg rounded-full" />
                     <MapPin className="w-5 h-5 text-emerald-600 relative z-10" />
                   </div>
-                </motion.div>
+                </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-[10px] font-black uppercase tracking-widest text-gray-600 leading-none mb-1 block">
                     GPS Location
@@ -293,43 +255,39 @@ const EmergencyReport = ({ onComplete }) => {
                     {location ? `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}` : 'Scanning for signal...'}
                   </span>
                 </div>
-              </motion.div>
+              </div>
 
               {/* Action Buttons */}
               <div className="flex gap-4">
-                <motion.button 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button 
                   onClick={() => setStep(1)}
                   className="btn-secondary"
                 >
                   ← Back
-                </motion.button>
-                <motion.button 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className="flex-1 py-5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 disabled:from-gray-400 disabled:to-gray-400 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-glow-red-lg uppercase tracking-widest text-lg relative overflow-hidden group"
-                >
-                  <span className="relative z-10 flex items-center justify-center gap-3">
-                    {loading ? (
-                      <>
-                        <Loader className="w-5 h-5 animate-spin" />
-                        Transmitting...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-5 h-5 fill-white" />
-                        Submit
-                      </>
-                    )}
-                  </span>
-                </motion.button>
-              </div>
-            </motion.div>
+                </button>
+              <button 
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex-1 py-5 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 disabled:from-gray-400 disabled:to-gray-400 text-white font-black rounded-xl transition-all shadow-lg hover:shadow-glow-red-lg uppercase tracking-widest text-lg relative overflow-hidden group"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-3">
+                  {loading ? (
+                    <>
+                      <Loader className="w-5 h-5 animate-spin" />
+                      Transmitting...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-5 h-5 fill-white" />
+                      Submit
+                    </>
+                  )}
+                </span>
+              </button>
+            </div>
+          </div>
           )}
-        </AnimatePresence>
+        </div>
       </div>
     </div>
   );
