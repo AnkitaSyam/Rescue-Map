@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Shield, MapPin, CheckCircle, ArrowRight, Heart, Award, Zap,
-         LogIn, UserPlus, Navigation, Phone, Clock, AlertTriangle, X,
-         ChevronRight, Loader, LogOut, Lock, Eye, EyeOff, User, Calendar } from 'lucide-react';
+import {
+  Users, Shield, MapPin, CheckCircle, ArrowRight, Heart, Award, Zap,
+  LogIn, UserPlus, Navigation, Phone, Clock, AlertTriangle, X,
+  ChevronRight, Loader, LogOut, Lock, Eye, EyeOff, User, Calendar
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
@@ -9,21 +11,21 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 const API = `${API_BASE_URL}/api`;
 
 const SKILLS = [
-  { id: 'First Aid',     label: 'First Aid',     emoji: '🩹' },
-  { id: 'Swimming',      label: 'Swimming',       emoji: '🏊' },
-  { id: 'Climbing',      label: 'Climbing',       emoji: '🧗' },
-  { id: 'Medical',       label: 'Medical',        emoji: '🏥' },
-  { id: 'Boat Owner',    label: 'Boat Owner',     emoji: '⛵' },
-  { id: 'Heavy Driving', label: 'Heavy Driving',  emoji: '🚛' },
-  { id: 'Fire Safety',   label: 'Fire Safety',    emoji: '🔥' },
+  { id: 'First Aid', label: 'First Aid', emoji: '🩹' },
+  { id: 'Swimming', label: 'Swimming', emoji: '🏊' },
+  { id: 'Climbing', label: 'Climbing', emoji: '🧗' },
+  { id: 'Medical', label: 'Medical', emoji: '🏥' },
+  { id: 'Boat Owner', label: 'Boat Owner', emoji: '⛵' },
+  { id: 'Heavy Driving', label: 'Heavy Driving', emoji: '🚛' },
+  { id: 'Fire Safety', label: 'Fire Safety', emoji: '🔥' },
   { id: 'Search & Rescue', label: 'Search & Rescue', emoji: '🔦' },
 ];
 
 const severityStyle = {
   Critical: 'bg-red-100 text-red-600 border-red-300',
-  Trapped:  'bg-orange-100 text-orange-600 border-orange-300',
-  Injured:  'bg-blue-100 text-blue-600 border-blue-300',
-  Safe:     'bg-emerald-100 text-emerald-600 border-emerald-300',
+  Trapped: 'bg-orange-100 text-orange-600 border-orange-300',
+  Injured: 'bg-blue-100 text-blue-600 border-blue-300',
+  Safe: 'bg-emerald-100 text-emerald-600 border-emerald-300',
 };
 
 // ─── helpers ────────────────────────────────────────────────
@@ -41,17 +43,17 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
 
 
   // ── auth form ──
-  const [authMode, setAuthMode]       = useState('login');   // 'login' | 'register'
-  const [showPwd, setShowPwd]         = useState(false);
+  const [authMode, setAuthMode] = useState('login');   // 'login' | 'register'
+  const [showPwd, setShowPwd] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError]     = useState('');
+  const [authError, setAuthError] = useState('');
   const [form, setForm] = useState({ name: '', phone: '', password: '', dob: '', skills: [] });
 
   // ── main view ──
-  const [view, setView]               = useState('alerts');   // 'alerts' | 'tracking'
+  const [view, setView] = useState('alerts');   // 'alerts' | 'tracking'
   const [nearbyAlerts, setNearbyAlerts] = useState([]);
   const [activeRescue, setActiveRescue] = useState(null);
-  const [enRouteId, setEnRouteId]     = useState(null);
+  const [enRouteId, setEnRouteId] = useState(null);
 
   // ─── real-time & initial load ───────────────────────────
   useEffect(() => {
@@ -70,7 +72,7 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
     try {
       const { data } = await axios.get(`${API}/victims`);
       setNearbyAlerts(data.filter(v => v.status === 'Pending'));
-    } catch {}
+    } catch { }
   };
 
   const refreshVolunteer = async () => {
@@ -82,7 +84,7 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
         const active = data.volunteer.activeTasks?.find(t => t.status !== 'Closed' && t.status !== 'Rescued');
         setActiveRescue(active || null);
       }
-    } catch {}
+    } catch { }
   };
 
   const save = (vol) => {
@@ -170,7 +172,7 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
         setNearbyAlerts(prev => prev.filter(a => a._id !== alert._id));
         save(data.volunteer);
       }
-    } catch {}
+    } catch { }
     finally { setEnRouteId(null); }
   };
 
@@ -212,9 +214,8 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
           >
             {[['login', 'Login', LogIn], ['register', 'Register', UserPlus]].map(([mode, label, Icon]) => (
               <button key={mode} onClick={() => { setAuthMode(mode); setAuthError(''); setForm({ name: '', phone: '', password: '', age: '', skills: [] }); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  authMode === mode ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-700'
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${authMode === mode ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-700'
+                  }`}
               >
                 <Icon className="w-3.5 h-3.5" /> {label}
               </button>
@@ -257,7 +258,7 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
                 <Phone className="w-3 h-3" /> Phone Number <span className="text-red-600">*</span>
               </label>
               <input value={form.phone} onChange={e => setField('phone', e.target.value)} required type="tel"
-                placeholder="+91 98765 43210"
+                placeholder="+91"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500 outline-none font-medium bg-gray-50"
               />
             </div>
@@ -322,11 +323,10 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
                     const active = form.skills.includes(id);
                     return (
                       <button key={id} type="button" onClick={() => toggleSkill(id)}
-                        className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left transition-all duration-200 ${
-                          active
+                        className={`flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left transition-all duration-200 ${active
                             ? 'bg-red-600 border-red-600 text-white shadow-md shadow-red-600/20'
                             : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700'
-                        }`}
+                          }`}
                       >
                         <span className={`w-5 h-5 rounded-md flex items-center justify-center text-xs flex-shrink-0 ${active ? 'bg-white/20' : 'bg-white border border-gray-300'}`}>
                           {active ? '✓' : emoji}
@@ -572,14 +572,14 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
               <h2 className="text-4xl font-display font-black tracking-tight uppercase text-gray-900">Priority Alerts</h2>
               <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-1">Real-time distress notifications</p>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {/* Consolidated Dashboard Logout */}
-              <motion.button 
+              <motion.button
                 type="button"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleLogout} 
+                onClick={handleLogout}
                 className="px-6 py-2 border-2 border-red-200 bg-red-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
               >
                 Logout
@@ -596,11 +596,10 @@ const VolunteerPortal = ({ socket, volunteer, onAuth, onLogout }) => {
                   className="bg-white border border-gray-200 rounded-3xl p-6 shadow-md hover:shadow-xl hover:border-gray-300 transition-all relative overflow-hidden"
                 >
                   {/* severity accent */}
-                  <div className={`absolute top-0 left-0 w-1 h-full rounded-l-3xl ${
-                    alert.severity === 'Critical' ? 'bg-red-600' :
-                    alert.severity === 'Trapped'  ? 'bg-orange-500' :
-                    alert.severity === 'Injured'  ? 'bg-blue-500' : 'bg-emerald-500'
-                  }`} />
+                  <div className={`absolute top-0 left-0 w-1 h-full rounded-l-3xl ${alert.severity === 'Critical' ? 'bg-red-600' :
+                      alert.severity === 'Trapped' ? 'bg-orange-500' :
+                        alert.severity === 'Injured' ? 'bg-blue-500' : 'bg-emerald-500'
+                    }`} />
 
                   <div className="space-y-4 pl-2">
                     <div className="flex items-center justify-between">
